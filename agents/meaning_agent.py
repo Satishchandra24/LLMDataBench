@@ -7,12 +7,31 @@ import warnings
 #llm = ChatOllama(model="llama3.2", temperature=0)
 
 
+def safe_int(val) -> int:
+    try:
+        if pd.isna(val):
+            return 0
+        return int(val)
+    except:
+        return 0
+
 def compute_column_stats(df) -> dict:
+    def safe_int(val) -> int:
+        try:
+            import math
+            if math.isnan(float(val)):
+                return 0
+        except:
+            pass
+        try:
+            return int(val)
+        except:
+            return 0
+
     stats = {}
     for col in df.columns:
         col_data = df[col].dropna()
 
-        # truncate long text to 150 chars per value, max 5 samples
         samples = [str(v)[:150] for v in col_data.unique().tolist()[:5]]
 
         col_stats = {
@@ -20,8 +39,8 @@ def compute_column_stats(df) -> dict:
             "total_unique":  int(df[col].nunique()),
             "null_count":    int(df[col].isnull().sum()),
             "total_count":   int(len(df[col])),
-            "avg_length":    int(col_data.astype(str).str.len().mean()),  # useful for text columns
-            "max_length":    int(col_data.astype(str).str.len().max()),
+            "avg_length":    safe_int(col_data.astype(str).str.len().mean()),
+            "max_length":    safe_int(col_data.astype(str).str.len().max()),
         }
 
         # try numeric
@@ -122,12 +141,15 @@ Format:
     if start_idx is not None and end_idx is not None:
         json_str = content[start_idx:end_idx + 1]
         try:
-            return json.loads(json_str)
+            result = json.loads(json_str)
+            # filter out any values that are not dicts
+            return {k: v for k, v in result.items() if isinstance(v, dict)}
         except:
             json_str = re.sub(r',\s*}', '}', json_str)
             json_str = re.sub(r',\s*]', ']', json_str)
             try:
-                return json.loads(json_str)
+                result = json.loads(json_str)
+                return {k: v for k, v in result.items() if isinstance(v, dict)}
             except Exception as e:
                 print(f"Warning: Could not parse meaning agent output: {e}")
 

@@ -18,10 +18,20 @@ def build_evaluation_table(row: dict, column_meanings: dict) -> str:
     lines = ["column | type | invalid_if | actual_value"]
     lines.append("-------|------|------------|------------")
     for col, rules in column_meanings.items():
-        actual   = str(row.get(col, "NULL"))
-        actual   = actual[:200] if len(actual) > 200 else actual  # truncate long text
-        col_type = rules.get("type", "unknown")
-        invalid  = "; ".join(rules.get("invalid_indicators", [])) or "none"
+        actual = str(row.get(col, "NULL"))
+        actual = actual[:200] if len(actual) > 200 else actual
+
+        # handle case where rules is a string instead of dict
+        if isinstance(rules, str):
+            col_type = "unknown"
+            invalid  = rules[:100]  # use the string as the rule description
+        elif isinstance(rules, dict):
+            col_type = rules.get("type", "unknown")
+            invalid  = "; ".join(rules.get("invalid_indicators", [])) or "none"
+        else:
+            col_type = "unknown"
+            invalid  = "none"
+
         lines.append(f"{col} | {col_type} | {invalid} | {actual}")
     return "\n".join(lines)
 

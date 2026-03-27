@@ -97,6 +97,18 @@ def run_pipeline(csv_path: str, model: str = "llama3.2", concurrency: int = 5, r
 
     save_scores_to_csv(df, evaluations, model, output_dir)
 
+    # ADD THIS — save timing metadata
+    meta_path = os.path.join(output_dir, f"meta_{model}.json")
+    with open(meta_path, "w") as f:
+        json.dump({
+            "model":        model,
+            "total_rows":   len(df),
+            "total_time_s": latency,
+            "time_per_row": round(latency / len(df), 2),
+            "avg_score":    round(sum(e["score"] for e in evaluations) / len(evaluations), 2)
+        }, f, indent=2)
+    print(f"Meta saved to {meta_path}")
+
 if __name__ == "__main__":
     import sys
     import argparse

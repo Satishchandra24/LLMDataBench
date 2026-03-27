@@ -6,3 +6,4 @@ langgraph
 faiss-cpu
 pypdf
 beautifulsoup4
+scipy
