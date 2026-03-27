@@ -122,7 +122,45 @@ Format:
     content  = response.content.strip()
     content  = re.sub(r"```(?:json)?", "", content).strip("` \n")
 
-    # brace counting extractor
+    # handle both array and object formats
+    # if mistral returns an array, convert it to a dict
+    if content.lstrip().startswith("["):
+        try:
+            arr = json.loads(content)
+            result = {}
+            for item in arr:
+                if isinstance(item, dict) and "column_name" in item:
+                    col_name = item.pop("column_name")
+                    result[col_name] = item
+            return {k: v for k, v in result.items() if isinstance(v, dict)}
+        except:
+            # try extracting array with bracket counting
+            bracket_count = 0
+            start_idx = None
+            end_idx   = None
+            for i, char in enumerate(content):
+                if char == "[":
+                    if start_idx is None:
+                        start_idx = i
+                    bracket_count += 1
+                elif char == "]":
+                    bracket_count -= 1
+                    if bracket_count == 0 and start_idx is not None:
+                        end_idx = i
+                        break
+            if start_idx is not None and end_idx is not None:
+                try:
+                    arr = json.loads(content[start_idx:end_idx+1])
+                    result = {}
+                    for item in arr:
+                        if isinstance(item, dict) and "column_name" in item:
+                            col_name = item.pop("column_name")
+                            result[col_name] = item
+                    return {k: v for k, v in result.items() if isinstance(v, dict)}
+                except Exception as e:
+                    print(f"Warning: Could not parse array format: {e}")
+
+    # existing brace-counting extractor for object format
     brace_count = 0
     start_idx   = None
     end_idx     = None
@@ -142,7 +180,6 @@ Format:
         json_str = content[start_idx:end_idx + 1]
         try:
             result = json.loads(json_str)
-            # filter out any values that are not dicts
             return {k: v for k, v in result.items() if isinstance(v, dict)}
         except:
             json_str = re.sub(r',\s*}', '}', json_str)
